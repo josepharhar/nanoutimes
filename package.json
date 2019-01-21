@@ -1,0 +1,16 @@
+{
+  "name": "nanoutimes",
+  "version": "0.0.1",
+  "description": "fs.utimes() with nanosecond precision",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/josepharhar/nanoutimes"
+  },
+  "author": {
+    "name": "Joseph Arhar",
+    "email": "josepharhar@gmail.com",
+    "url": "https://github.com/josepharhar"
+  },
+  "homepage": "https://github.com/josepharhar/nanoutimes"
+}
