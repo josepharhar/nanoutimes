@@ -10,10 +10,9 @@ nanoutimes is intended to mirror fs.utimes() and similar functions as closely as
 
 ```javascript
 const nanoutimes = require('nanoutimes');
-nanoutimes.utimesSync('file.txt', {
-  mtimeS: 1548106885,
-  mtimeNs: 269349603,
-  atimeS: 1548106885,
-  atimeNs: 269349603
-});
+const atimeS = 1548106885;
+const atimeNs = 269349603;
+const mtimeS = 1548106885;
+const mtimeNs = 269349603;
+nanoutimes.utimesSync('file.txt', atimeS, atimeNs, mtimeS, mtimeNs);
 ```
