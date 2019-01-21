@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "nanoutimes": "file:.."
+  }
+}
