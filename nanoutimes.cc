@@ -5,6 +5,17 @@
 #include <sys/stat.h>
 #include <string.h>
 
+#ifdef _WIN32
+
+#include <windows.h>
+
+#else  // _WIN32
+
+#include <fcntl.h>
+#include <sys/stat.h>
+
+#endif  // _WIN32
+
 #define NEW_STRING(str) \
   v8::String::NewFromUtf8(isolate, str, v8::NewStringType::kNormal) \
     .ToLocalChecked()
@@ -35,49 +46,52 @@ static void utimesSync(
     args.GetReturnValue().Set(NEW_STRING("atimeS must be a BigInt"));
     return;
   }
-  uint64_t atimeS = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[1])->Value());
+  int64_t atimeS = v8::Local<v8::BigInt>::Cast(args[1])->Int64Value();
+  //uint64_t atimeS = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[1])->Value());
 
   if (!args[2]->IsBigIntObject()) {
     // TODO
     args.GetReturnValue().Set(NEW_STRING("atimeNs must be a BigInt"));
     return;
   }
-  uint64_t atimeNs = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[2])->Value());
+  int64_t atimeNs = v8::Local<v8::BigInt>::Cast(args[2])->Int64Value();
+  //uint64_t atimeNs = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[2])->Value());
 
   if (!args[3]->IsBigIntObject()) {
     // TODO
     args.GetReturnValue().Set(NEW_STRING("mtimeS must be a BigInt"));
     return;
   }
-  uint64_t mtimeS = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[3])->Value());
+  int64_t mtimeS = v8::Local<v8::BigInt>::Cast(args[3])->Int64Value();
+  //uint64_t mtimeS = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[3])->Value());
 
   if (!args[4]->IsBigIntObject()) {
     // TODO
     args.GetReturnValue().Set(NEW_STRING("mtimeNs must be a BigInt"));
     return;
   }
-  uint64_t mtimeNs = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[4])->Value());
+  int64_t mtimeNs = v8::Local<v8::BigInt>::Cast(args[4])->Int64Value();
+  //uint64_t mtimeNs = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[4])->Value());
 
 #ifdef _WIN32
   // TODO
 #else  // _WIN32
   struct timespec times[2];
   memset(times, 0, sizeof(struct timespec) * 2);
-
-  if (atimeS < 0 || atimeNs < 0) 
   times[0].tv_sec = atimeS;
   times[0].tv_nsec = atimeNs;
   times[1].tv_sec = mtimeS;
   times[1].tv_nsec = mtimeNs;
 
-  if (utimes(filepath, times)) {
+  if (utimensat(AT_FDCWD, char_filepath, times, /* flags */ 0)) {
+    fprintf(stderr, "utimensat() failed. strerror: %s\n", strerror(errno));
     std::string error_string =
-      std::string("utimes() failed. strerror: ")
-      + strerror(errno);
+      std::string("utimensat() failed. strerror: ") + strerror(errno);
     isolate->ThrowException(v8::Exception::Error(
           NEW_STRING(error_string.c_str())));
     return;
   }
+  fprintf(stderr, "utimensat() succeeded");
 #endif  // _WIN32
 }
 
