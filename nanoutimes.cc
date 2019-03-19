@@ -7,6 +7,20 @@
 #ifdef _WIN32
 
 #include <windows.h>
+#include <strsafe.h>
+
+FILETIME createFILETIME(uint64_t seconds, uint64_t nanoseconds) {
+  //uint64_t hunnaNs = (seconds * 10000000) + (nanoseconds / 100);
+  uint64_t hunnaNs = ((seconds + 11644473600) * 10000000) + nanoseconds / 100;
+
+  ULARGE_INTEGER temp;
+  temp.QuadPart = hunnaNs;
+
+  FILETIME filetime;
+  filetime.dwHighDateTime = temp.HighPart;
+  filetime.dwLowDateTime = temp.LowPart;
+  return filetime;
+}
 
 #else  // _WIN32
 
@@ -70,7 +84,48 @@ static void utimesSync(
   int64_t mtimeNs = v8::Local<v8::BigInt>::Cast(args[4])->Int64Value();
 
 #ifdef _WIN32
-  // TODO
+  // https://docs.microsoft.com/en-us/windows/desktop/SysInfo/retrieving-the-last-write-time
+  //HANDLE file_handle = CreateFile(char_filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+  HANDLE file_handle = CreateFile(char_filepath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+  if (file_handle == INVALID_HANDLE_VALUE) {
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("failed to open file")));
+    return;
+  }
+
+  // https://docs.microsoft.com/en-us/windows/desktop/SysInfo/changing-a-file-time-to-the-current-time
+  FILETIME lpLastAccessTime, lpLastWriteTime;
+  lpLastAccessTime = createFILETIME(atimeS, atimeNs);
+  lpLastWriteTime = createFILETIME(mtimeS, mtimeNs);
+  DWORD retval = SetFileTime(file_handle, (LPFILETIME) NULL, &lpLastAccessTime, &lpLastWriteTime);
+  if (!retval) {
+    // https://docs.microsoft.com/en-us/windows/desktop/debug/retrieving-the-last-error-code
+    LPTSTR lpszFunction = "SetFileTime";
+    LPVOID lpMsgBuf, lpDisplayBuf;
+    DWORD dw = GetLastError();
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        dw,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) &lpMsgBuf,
+        0, NULL );
+    lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, 
+        (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR)); 
+    StringCchPrintf((LPTSTR)lpDisplayBuf, 
+        LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+        TEXT("%s failed with error %d: %s"), 
+        lpszFunction, dw, lpMsgBuf); 
+    MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK); 
+    LocalFree(lpMsgBuf);
+    LocalFree(lpDisplayBuf);
+
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("SetFileTime() failed")));
+    return;
+  }
+  CloseHandle(file_handle);
+
 #else  // _WIN32
   struct timespec times[2];
   memset(times, 0, sizeof(struct timespec) * 2);

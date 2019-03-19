@@ -12,9 +12,9 @@ let mtimeS = stats.mtimeMs / 1000n;
 let mtimeNs = stats.mtimeNs;
 
 atimeS += 1n;
-atimeNs += 2n;
+atimeNs += 202n;
 mtimeS += 3n;
-mtimeNs += 4n;
+mtimeNs += 404n;
 
 const retval = nanoutimes.utimesSync('file.txt', atimeS, atimeNs, mtimeS, mtimeNs);
 console.log('nanoutimes.utimesSync() returned: ' + JSON.stringify(retval, null, 2));
