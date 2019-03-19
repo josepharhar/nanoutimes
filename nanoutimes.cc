@@ -1,7 +1,6 @@
 #include <node.h>
 
 #include <errno.h>
-#include <stdio.h>
 #include <sys/stat.h>
 #include <string.h>
 
@@ -26,52 +25,49 @@ static void utimesSync(
 
   if (args.Length() < 5) {
     // TODO figure out what fs.utimes() does in this case
-    args.GetReturnValue().Set(NEW_STRING("args.Length() < 5"));
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("args.Length() < 5")));
     return;
   }
 
   if (!args[0]->IsString()) {
     // TODO figure out what fs.utimes() does in this case
-    args.GetReturnValue().Set(NEW_STRING("!args[0]->IsString()"));
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("!args[0]->IsString()")));
     return;
   }
   v8::Local<v8::String> filepath = v8::Local<v8::String>::Cast(args[0]);
   v8::String::Utf8Value utf8_filepath(isolate, filepath);
   char* char_filepath = *utf8_filepath;
 
+  // TODO do i need any logic for this?
   // If the input numbers are less than zero, then don't change the time.
 
-  if (!args[1]->IsBigIntObject()) {
+  if (!args[1]->IsBigInt()) {
     // TODO
-    args.GetReturnValue().Set(NEW_STRING("atimeS must be a BigInt"));
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("atimeS must be a BigInt")));
     return;
   }
   int64_t atimeS = v8::Local<v8::BigInt>::Cast(args[1])->Int64Value();
-  //uint64_t atimeS = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[1])->Value());
 
-  if (!args[2]->IsBigIntObject()) {
+  if (!args[2]->IsBigInt()) {
     // TODO
-    args.GetReturnValue().Set(NEW_STRING("atimeNs must be a BigInt"));
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("atimeNs must be a BigInt")));
     return;
   }
   int64_t atimeNs = v8::Local<v8::BigInt>::Cast(args[2])->Int64Value();
-  //uint64_t atimeNs = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[2])->Value());
 
-  if (!args[3]->IsBigIntObject()) {
+  if (!args[3]->IsBigInt()) {
     // TODO
-    args.GetReturnValue().Set(NEW_STRING("mtimeS must be a BigInt"));
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("mtimeS must be a BigInt")));
     return;
   }
   int64_t mtimeS = v8::Local<v8::BigInt>::Cast(args[3])->Int64Value();
-  //uint64_t mtimeS = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[3])->Value());
 
-  if (!args[4]->IsBigIntObject()) {
+  if (!args[4]->IsBigInt()) {
     // TODO
-    args.GetReturnValue().Set(NEW_STRING("mtimeNs must be a BigInt"));
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("mtimeNs must be a BigInt")));
     return;
   }
   int64_t mtimeNs = v8::Local<v8::BigInt>::Cast(args[4])->Int64Value();
-  //uint64_t mtimeNs = (uint64_t)(v8::Local<v8::BigInt>::Cast(args[4])->Value());
 
 #ifdef _WIN32
   // TODO
@@ -84,14 +80,12 @@ static void utimesSync(
   times[1].tv_nsec = mtimeNs;
 
   if (utimensat(AT_FDCWD, char_filepath, times, /* flags */ 0)) {
-    fprintf(stderr, "utimensat() failed. strerror: %s\n", strerror(errno));
     std::string error_string =
       std::string("utimensat() failed. strerror: ") + strerror(errno);
     isolate->ThrowException(v8::Exception::Error(
           NEW_STRING(error_string.c_str())));
     return;
   }
-  fprintf(stderr, "utimensat() succeeded");
 #endif  // _WIN32
 }
 

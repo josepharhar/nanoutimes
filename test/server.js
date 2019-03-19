@@ -16,4 +16,5 @@ atimeNs += 2n;
 mtimeS += 3n;
 mtimeNs += 4n;
 
-nanoutimes.utimesSync('file.txt', atimeS, atimeNs, mtimeS, mtimeNs);
+const retval = nanoutimes.utimesSync('file.txt', atimeS, atimeNs, mtimeS, mtimeNs);
+console.log('nanoutimes.utimesSync() returned: ' + JSON.stringify(retval, null, 2));
