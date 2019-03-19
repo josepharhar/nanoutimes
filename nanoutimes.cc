@@ -85,7 +85,6 @@ static void utimesSync(
 
 #ifdef _WIN32
   // https://docs.microsoft.com/en-us/windows/desktop/SysInfo/retrieving-the-last-write-time
-  //HANDLE file_handle = CreateFile(char_filepath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
   HANDLE file_handle = CreateFile(char_filepath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
   if (file_handle == INVALID_HANDLE_VALUE) {
     isolate->ThrowException(v8::Exception::Error(NEW_STRING("failed to open file")));
@@ -111,17 +110,14 @@ static void utimesSync(
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         (LPTSTR) &lpMsgBuf,
         0, NULL );
-    lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, 
-        (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR)); 
-    StringCchPrintf((LPTSTR)lpDisplayBuf, 
-        LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-        TEXT("%s failed with error %d: %s"), 
-        lpszFunction, dw, lpMsgBuf); 
-    MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK); 
-    LocalFree(lpMsgBuf);
-    LocalFree(lpDisplayBuf);
 
-    isolate->ThrowException(v8::Exception::Error(NEW_STRING("SetFileTime() failed")));
+    std::string error_string = std::string("SetFileTime(\"")
+      + std::string(char_filepath)
+      + std::string("\") failed with error ")
+      + std::to_string(dw)
+      + std::string(": ")
+      + std::string((TCHAR*)lpMsgBuf);
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING(error_string.c_str())));
     return;
   }
   CloseHandle(file_handle);
