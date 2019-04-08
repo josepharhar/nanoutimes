@@ -55,6 +55,9 @@ static void utimesSync(
   // TODO do i need any logic for this?
   // If the input numbers are less than zero, then don't change the time.
 
+  if (args[1]->IsFalsey()) {
+    // TODO use NULL FILETIME on windows and UTIME_OMIT on linux
+  }
   if (!args[1]->IsBigInt()) {
     // TODO
     isolate->ThrowException(v8::Exception::Error(NEW_STRING("atimeS must be a BigInt")));
