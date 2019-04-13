@@ -4,6 +4,11 @@
 #include <sys/stat.h>
 #include <string.h>
 
+#include <utility>
+#include <memory>
+#include <iostream>
+#include <sstream>
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -33,58 +38,89 @@ FILETIME createFILETIME(uint64_t seconds, uint64_t nanoseconds) {
   v8::String::NewFromUtf8(isolate, str, v8::NewStringType::kNormal) \
     .ToLocalChecked()
 
+static std::unique_ptr<int64_t> valueToNumber(v8::Local<v8::Value> value, v8::Isolate* isolate) {
+  if (value->IsBigInt())
+    return std::make_unique<int64_t>(v8::Local<v8::BigInt>::Cast(value)->Int64Value());
+
+  // try to convert strings to numbers?
+  // TODO this wont have enough capacity
+  /*v8::MaybeLocal<v8::Number> maybe_number = value->ToNumber(isolate);
+  if (maybe_number.IsEmpty())
+    return nullptr;
+  return std::make_unique<int64_t>(maybe_number.ToLocalChecked()->Value());*/
+  if (value->IsNumber())
+    return std::make_unique<int64_t>(v8::Local<v8::Number>::Cast(value)->Value());
+
+  return nullptr;
+}
+
+static std::string valueTypeOf(v8::Local<v8::Value> value, v8::Isolate* isolate) {
+  v8::Local<v8::String> local_type = value->TypeOf(isolate);
+  v8::String::Utf8Value utf8value(local_type);
+  const char* type_cstr = *utf8value ? *utf8value : "<string conversion failed>";
+  return std::string(type_cstr);
+}
+
 static void utimesSync(
     const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
 
-  if (args.Length() < 5) {
+  if (args.Length() != 5) {
     // TODO figure out what fs.utimes() does in this case
-    isolate->ThrowException(v8::Exception::Error(NEW_STRING("args.Length() < 5")));
+    std::stringstream sstream;
+    sstream << "utimes requires 5 arguments. num provided: " << args.Length();
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING(sstream.str().c_str())));
     return;
   }
 
   if (!args[0]->IsString()) {
     // TODO figure out what fs.utimes() does in this case
-    isolate->ThrowException(v8::Exception::Error(NEW_STRING("!args[0]->IsString()")));
+    isolate->ThrowException(v8::Exception::Error(NEW_STRING("filepath must be a string")));
     return;
   }
   v8::Local<v8::String> filepath = v8::Local<v8::String>::Cast(args[0]);
   v8::String::Utf8Value utf8_filepath(isolate, filepath);
   char* char_filepath = *utf8_filepath;
 
-  // TODO do i need any logic for this?
-  // If the input numbers are less than zero, then don't change the time.
+  // if not present, then don't update atime
+  std::unique_ptr<std::pair<int64_t, int64_t>> atimeSandNs;
+  if (args[1]->ToBoolean(isolate)->IsTrue() || args[2]->ToBoolean(isolate)->IsTrue()) {
+    std::unique_ptr<int64_t> atimeS = valueToNumber(args[1], isolate);
+    if (!atimeS) {
+      std::string type = std::string("atimeS could not be converted to a number. type: ") + valueTypeOf(args[1], isolate);
+      isolate->ThrowException(v8::Exception::Error(NEW_STRING(type.c_str())));
+      return;
+    }
 
-  if (args[1]->IsFalsey()) {
-    // TODO use NULL FILETIME on windows and UTIME_OMIT on linux
-  }
-  if (!args[1]->IsBigInt()) {
-    // TODO
-    isolate->ThrowException(v8::Exception::Error(NEW_STRING("atimeS must be a BigInt")));
-    return;
-  }
-  int64_t atimeS = v8::Local<v8::BigInt>::Cast(args[1])->Int64Value();
+    std::unique_ptr<int64_t> atimeNs = valueToNumber(args[2], isolate);
+    if (!atimeNs) {
+      std::string type = std::string("atimeNs could not be converted to a number. type: ") + valueTypeOf(args[2], isolate);
+      isolate->ThrowException(v8::Exception::Error(NEW_STRING(type.c_str())));
+      return;
+    }
 
-  if (!args[2]->IsBigInt()) {
-    // TODO
-    isolate->ThrowException(v8::Exception::Error(NEW_STRING("atimeNs must be a BigInt")));
-    return;
+    atimeSandNs = std::make_unique<std::pair<int64_t, int64_t>>(*atimeS, *atimeNs);
   }
-  int64_t atimeNs = v8::Local<v8::BigInt>::Cast(args[2])->Int64Value();
 
-  if (!args[3]->IsBigInt()) {
-    // TODO
-    isolate->ThrowException(v8::Exception::Error(NEW_STRING("mtimeS must be a BigInt")));
-    return;
-  }
-  int64_t mtimeS = v8::Local<v8::BigInt>::Cast(args[3])->Int64Value();
+  // if not present, then don't update mtime
+  std::unique_ptr<std::pair<int64_t, int64_t>> mtimeSandNs;
+  if (args[3]->ToBoolean(isolate)->IsTrue() || args[4]->ToBoolean(isolate)->IsTrue()) {
+    std::unique_ptr<int64_t> mtimeS = valueToNumber(args[3], isolate);
+    if (!mtimeS) {
+      std::string type = std::string("mtimeS could not be converted to a number. type: ") + valueTypeOf(args[3], isolate);
+      isolate->ThrowException(v8::Exception::Error(NEW_STRING(type.c_str())));
+      return;
+    }
 
-  if (!args[4]->IsBigInt()) {
-    // TODO
-    isolate->ThrowException(v8::Exception::Error(NEW_STRING("mtimeNs must be a BigInt")));
-    return;
+    std::unique_ptr<int64_t> mtimeNs = valueToNumber(args[4], isolate);
+    if (!mtimeNs) {
+      std::string type = std::string("mtimeNs could not be converted to a number. type: ") + valueTypeOf(args[4], isolate);
+      isolate->ThrowException(v8::Exception::Error(NEW_STRING(type.c_str())));
+      return;
+    }
+
+    mtimeSandNs = std::make_unique<std::pair<int64_t, int64_t>>(*mtimeS, *mtimeNs);
   }
-  int64_t mtimeNs = v8::Local<v8::BigInt>::Cast(args[4])->Int64Value();
 
 #ifdef _WIN32
   // https://docs.microsoft.com/en-us/windows/desktop/SysInfo/retrieving-the-last-write-time
@@ -96,13 +132,25 @@ static void utimesSync(
 
   // https://docs.microsoft.com/en-us/windows/desktop/SysInfo/changing-a-file-time-to-the-current-time
   FILETIME lpLastAccessTime, lpLastWriteTime;
-  lpLastAccessTime = createFILETIME(atimeS, atimeNs);
-  lpLastWriteTime = createFILETIME(mtimeS, mtimeNs);
-  DWORD retval = SetFileTime(file_handle, (LPFILETIME) NULL, &lpLastAccessTime, &lpLastWriteTime);
+  lpLastAccessTime.dwLowDateTime = 0;
+  lpLastAccessTime.dwHighDateTime = 0;
+  lpLastWriteTime.dwLowDateTime = 0;
+  lpLastWriteTime.dwHighDateTime = 0;
+  if (atimeSandNs)
+    lpLastAccessTime = createFILETIME(atimeSandNs->first, atimeSandNs->second);
+  if (mtimeSandNs)
+    lpLastWriteTime = createFILETIME(mtimeSandNs->first, mtimeSandNs->second);
+  DWORD retval = SetFileTime(
+      file_handle,
+      (LPFILETIME) NULL,
+      /*atimeSandNs ? &lpLastAccessTime : NULL,
+      mtimeSandNs ? &lpLastWriteTime : NULL);*/
+      &lpLastAccessTime,
+      &lpLastWriteTime);
   if (!retval) {
     // https://docs.microsoft.com/en-us/windows/desktop/debug/retrieving-the-last-error-code
     LPTSTR lpszFunction = "SetFileTime";
-    LPVOID lpMsgBuf, lpDisplayBuf;
+    LPVOID lpMsgBuf;
     DWORD dw = GetLastError();
     FormatMessage(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | 
@@ -128,10 +176,18 @@ static void utimesSync(
 #else  // _WIN32
   struct timespec times[2];
   memset(times, 0, sizeof(struct timespec) * 2);
-  times[0].tv_sec = atimeS;
-  times[0].tv_nsec = atimeNs;
-  times[1].tv_sec = mtimeS;
-  times[1].tv_nsec = mtimeNs;
+  if (atimeSandNs) {
+    times[0].tv_sec = atimeSandNs.first;
+    times[0].tv_nsec = atimeSandNs.second;
+  } else {
+    times[0].tv_nsec = UTIME_OMIT;
+  }
+  if (mtimeSandNs) {
+    times[1].tv_sec = mtimeSandNs.first;
+    times[1].tv_nsec = mtimeSandNs.second;
+  } else {
+    times[1].tv_nsec = UTIME_OMIT;
+  }
 
   if (utimensat(AT_FDCWD, char_filepath, times, /* flags */ 0)) {
     std::string error_string =

@@ -2,5 +2,8 @@
   "dependencies": {
     "nanostat": "^0.1.2",
     "nanoutimes": "file:.."
+  },
+  "scripts": {
+    "nanoutimes": "node nanoutimes"
   }
 }
