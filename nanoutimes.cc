@@ -177,14 +177,14 @@ static void utimesSync(
   struct timespec times[2];
   memset(times, 0, sizeof(struct timespec) * 2);
   if (atimeSandNs) {
-    times[0].tv_sec = atimeSandNs.first;
-    times[0].tv_nsec = atimeSandNs.second;
+    times[0].tv_sec = atimeSandNs->first;
+    times[0].tv_nsec = atimeSandNs->second;
   } else {
     times[0].tv_nsec = UTIME_OMIT;
   }
   if (mtimeSandNs) {
-    times[1].tv_sec = mtimeSandNs.first;
-    times[1].tv_nsec = mtimeSandNs.second;
+    times[1].tv_sec = mtimeSandNs->first;
+    times[1].tv_nsec = mtimeSandNs->second;
   } else {
     times[1].tv_nsec = UTIME_OMIT;
   }
