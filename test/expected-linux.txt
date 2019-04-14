@@ -1,2 +1,11 @@
+test 1 - set atime and mtime to 4/20
 atime: 2018-04-20 11:11:11.123456789 +0000
 mtime: 2018-04-20 11:11:11.123456789 +0000
+
+test 2 - increment mtime by 1s and 1ns
+atime: 2018-04-20 11:11:11.123456789 +0000
+mtime: 2018-04-20 11:11:12.123456790 +0000
+
+test 3 - increment atime by 2s and 2ns
+atime: 2018-04-20 11:11:13.123456791 +0000
+mtime: 2018-04-20 11:11:12.123456790 +0000

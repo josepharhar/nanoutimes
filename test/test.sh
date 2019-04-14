@@ -12,8 +12,19 @@ npm install
 npm rebuild
 
 touch file.txt
+
 npm run nanoutimes file.txt 1524222671 123456789 1524222671 123456789
-stat --printf="atime: %x\nmtime: %y\n" file.txt > actual.txt
+echo "test 1 - set atime and mtime to 4/20" > actual.txt
+stat --printf="atime: %x\nmtime: %y\n" file.txt >> actual.txt
+
+echo -e "\ntest 2 - increment mtime by 1s and 1ns" >> actual.txt
+npm run nanoutimes file.txt 0 0 1524222672 123456790
+stat --printf="atime: %x\nmtime: %y\n" file.txt >> actual.txt
+
+echo -e "\ntest 3 - increment atime by 2s and 2ns" >> actual.txt
+npm run nanoutimes file.txt 1524222673 123456791 0 0
+stat --printf="atime: %x\nmtime: %y\n" file.txt >> actual.txt
+
 rm file.txt
 
 if [ `uname -o` = 'Msys' ]; then
