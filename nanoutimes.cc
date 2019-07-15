@@ -80,7 +80,7 @@ static void utimesSync(
   }
   v8::Local<v8::String> filepath = v8::Local<v8::String>::Cast(args[0]);
   v8::String::Utf8Value utf8_filepath(isolate, filepath);
-  char* char_filepath = *utf8_filepath;
+  char* utf8_char_filepath = *utf8_filepath;
 
   // if not present, then don't update atime
   std::unique_ptr<std::pair<int64_t, int64_t>> atimeSandNs;
@@ -124,7 +124,12 @@ static void utimesSync(
 
 #ifdef _WIN32
   // https://docs.microsoft.com/en-us/windows/desktop/SysInfo/retrieving-the-last-write-time
-  HANDLE file_handle = CreateFile(char_filepath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+  //HANDLE file_handle = CreateFile(utf8_char_filepath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+  int wchars_num = MultiByteToWideChar(CP_UTF8, 0, utf8_char_filepath, -1, NULL, 0);
+  std::vector<wchar_t> wstr;
+  wstr.reserve(wchars_num);
+  MultiByteToWideChar(CP_UTF8, 0, utf8_char_filepath, -1, wstr.data(), wchars_num);
+  HANDLE file_handle = CreateFileW(wstr.data(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
   if (file_handle == INVALID_HANDLE_VALUE) {
     isolate->ThrowException(v8::Exception::Error(NEW_STRING("failed to open file")));
     return;
@@ -163,7 +168,7 @@ static void utimesSync(
         0, NULL );
 
     std::string error_string = std::string("SetFileTime(\"")
-      + std::string(char_filepath)
+      + std::string(utf8_char_filepath)
       + std::string("\") failed with error ")
       + std::to_string(dw)
       + std::string(": ")
@@ -189,7 +194,7 @@ static void utimesSync(
     times[1].tv_nsec = UTIME_OMIT;
   }
 
-  if (utimensat(AT_FDCWD, char_filepath, times, /* flags */ 0)) {
+  if (utimensat(AT_FDCWD, utf8_char_filepath, times, /* flags */ 0)) {
     std::string error_string =
       std::string("utimensat() failed. strerror: ") + strerror(errno);
     isolate->ThrowException(v8::Exception::Error(
