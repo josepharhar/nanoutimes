@@ -56,7 +56,7 @@ static std::unique_ptr<int64_t> valueToNumber(v8::Local<v8::Value> value, v8::Is
 
 static std::string valueTypeOf(v8::Local<v8::Value> value, v8::Isolate* isolate) {
   v8::Local<v8::String> local_type = value->TypeOf(isolate);
-  v8::String::Utf8Value utf8value(local_type);
+  v8::String::Utf8Value utf8value(isolate, local_type);
   const char* type_cstr = *utf8value ? *utf8value : "<string conversion failed>";
   return std::string(type_cstr);
 }
