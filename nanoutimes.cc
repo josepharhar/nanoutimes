@@ -154,7 +154,6 @@ static void utimesSync(
       &lpLastWriteTime);
   if (!retval) {
     // https://docs.microsoft.com/en-us/windows/desktop/debug/retrieving-the-last-error-code
-    LPTSTR lpszFunction = "SetFileTime";
     LPVOID lpMsgBuf;
     DWORD dw = GetLastError();
     FormatMessage(
